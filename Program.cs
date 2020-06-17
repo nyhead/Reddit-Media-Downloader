@@ -27,7 +27,7 @@ namespace Reddit_Video_Downloader_Telegram_Bot
         static void Main()
         {
             //Reddit Video bot token
-            bot = new TelegramBotClient("1062789541:AAFY99TtmIaiqwdNb07VNMPgzQj6sneylPY"); 
+            bot = new TelegramBotClient(""); 
 
             var me = bot.GetMeAsync().Result;
             Console.WriteLine(

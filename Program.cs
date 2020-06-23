@@ -1,10 +1,13 @@
-﻿using CliWrap;
-using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
+
+using CliWrap;
+using Newtonsoft.Json.Linq;
+
 using Telegram.Bot;
 using Telegram.Bot.Args;
 using Telegram.Bot.Types;
@@ -65,33 +68,19 @@ namespace Reddit_Video_Downloader_Telegram_Bot
 
                         string jsonData = await client.GetStringAsync(url + ".json");
 
-                        json = JArray.Parse(jsonData);
-
-                        bool isRedditMediaDomain = Convert.ToBoolean(json[0]["data"]["children"][0]["data"]["is_reddit_media_domain"]);
-
-                        if (isRedditMediaDomain == true)
-                        {
-                            InlineKeyboardMarkup inlineKeyboardDownloadMode = new InlineKeyboardMarkup(
+                        InlineKeyboardMarkup inlineKeyboardDownloadMode = new InlineKeyboardMarkup(
                                new[]
                                {
+                        InlineKeyboardButton.WithCallbackData("GIF"),
                         InlineKeyboardButton.WithCallbackData("Video"),
-                        InlineKeyboardButton.WithCallbackData("Audio"),
-                        InlineKeyboardButton.WithCallbackData("GIF")
+                        InlineKeyboardButton.WithCallbackData("Audio")
                                }
                                );
-
-                            editedMessage = await bot.SendTextMessageAsync(chat, "What do you want to download?",
-                                           replyMarkup: inlineKeyboardDownloadMode
-                                          );
-
-                            //Console.WriteLine(videoUrl);
-                            //await Download(videoUrl, title, ".mp4");
-                            //await Download(audioUrl, title, ".mp3");
-                        }
-                        else
-                        {
-                            await bot.SendTextMessageAsync(chat, "We don't accept embedded links");
-                        }
+                        editedMessage = await bot.SendTextMessageAsync(chat, "What do you want to download?",
+                        replyMarkup: inlineKeyboardDownloadMode
+                        );
+                        
+                        json = JArray.Parse(jsonData);
                     }
                     else
                     {
@@ -111,6 +100,8 @@ namespace Reddit_Video_Downloader_Telegram_Bot
                 callbackQuery.Id,
                 $"Received {callbackQuery.Data}");
 
+            //string videoResolution = string.Empty;
+
             switch (callbackQuery.Data)
             {
                 case "GIF":
@@ -125,11 +116,12 @@ namespace Reddit_Video_Downloader_Telegram_Bot
                     mode = Mode.AUDIO;
                     //audioMode = true;
                     break;
-                case "240p":
-                case "360p":
-                case "480p":
-                case "720p":
+                case "240":
+                case "360":
+                case "480":
+                case "720":
                     mode = Mode.VIDEO;
+                    //videoResolution = callbackQuery.Data;
                     break;
                 default:
 
@@ -144,19 +136,19 @@ namespace Reddit_Video_Downloader_Telegram_Bot
                 {
                    new[]
                    {
-                        InlineKeyboardButton.WithCallbackData("720p")
+                        InlineKeyboardButton.WithCallbackData("720")
                    },
                    new[]
                    {
-                       InlineKeyboardButton.WithCallbackData("480p")
+                       InlineKeyboardButton.WithCallbackData("480")
                    },
                    new[]
                    {
-                       InlineKeyboardButton.WithCallbackData("360p")
+                       InlineKeyboardButton.WithCallbackData("360")
                    },
                    new[]
                    {
-                       InlineKeyboardButton.WithCallbackData("240p")
+                       InlineKeyboardButton.WithCallbackData("240")
                    }
                 }
                 );
@@ -168,118 +160,75 @@ namespace Reddit_Video_Downloader_Telegram_Bot
                 //mode = Mode.VIDEO;
             }
             else if (mode == Mode.VIDEO)
-            {
-
-                // Ascending
-                // DASH_600_K / DASH_1_2_M / DASH_2_4_M / DASH_4_8_M
-                // DASH_240 / DASH_360 / DASH_480 / DASH_720
-
-
-                //if (videoUrl.Contains("DASH_240") || videoUrl.Contains("DASH_360") 
-                //    || videoUrl.Contains("DASH_480") || videoUrl.Contains("DASH_720") || videoUrl.Contains("DASH_1080"))
-                //{
-                //    switch (callbackQuery.Data)
-                //    {
-                //        case "240p":
-                //            mediaBaseUrl += "/DASH_240";
-                //            break;
-                //        case "360p":
-                //            mediaBaseUrl += "/DASH_360";
-                //            break;
-                //        case "480p":
-                //            mediaBaseUrl += "/DASH_480";
-                //            break;
-                //        case "720p":
-                //            mediaBaseUrl += "/DASH_720";
-                //            break;
-                //    }
-                //}
-                //else if (videoUrl.Contains("DASH_600_K") || videoUrl.Contains("DASH_1_2_M") 
-                //        || videoUrl.Contains("DASH_2_4_M") || videoUrl.Contains("DASH_4_8_M") || videoUrl.Contains("DASH_9_6_M"))
-                //{
-                //    switch (callbackQuery.Data)
-                //    {
-                //        case "240p":
-                //            mediaBaseUrl += "/DASH_600_K";
-                //            break;
-                //        case "360p":
-                //            mediaBaseUrl += "/DASH_1_2_M";
-                //            break;
-                //        case "480p":
-                //            mediaBaseUrl += "/DASH_2_4_M";
-                //            break;
-                //        case "720p":
-                //            mediaBaseUrl += "/DASH_4_8_M";
-                //            break;
-                //    }
-                //}             
-
-
+            {          
                 await bot.EditMessageTextAsync(chatId, editedMessage.MessageId, "Wait for the video to be downloaded and sent to you"
                         );
 
-                string videoUrl = json[0]["data"]["children"][0]["data"]["media"]["reddit_video"]["fallback_url"].ToString();
+                string videoUrl = json[0]["data"]["children"][0]["data"]["url"].ToString() + '/';
                 string audioUrl = json[0]["data"]["children"][0]["data"]["url"].ToString() + "/audio";
                 string title = json[0]["data"]["children"][0]["data"]["title"].ToString();
-
-
-
-                int videoHeight = 0; 
-                switch (callbackQuery.Data)
-                {
-                    case "240p":
-                        videoHeight = 240;
-                        break;
-                    case "360p":
-                        videoHeight = 360;
-                        break;
-                    case "480p":
-                        videoHeight = 480;
-                        break;
-                    case "720p":
-                        videoHeight = 720;
-                        break;
-                }
-
-
+                string dashUrl = json[0]["data"]["children"][0]["data"]["media"]["reddit_video"]["dash_url"].ToString();
+             
                 string videoFileName = $"video_{chatId}.mp4";
                 string audioFileName = $"audio_{chatId}.mp3";
 
-                bool downloadResultVideo = await Download(videoUrl, videoFileName);
+                bool downloadResultDash = await Download(dashUrl, "DASHPlaylist.mpd");
                 bool downloadResultAudio = await Download(audioUrl, audioFileName);
 
-
-
-                if (downloadResultAudio == true && downloadResultVideo == true)
+                if(downloadResultDash)
                 {
-                    string muxedFileName = "muxed_" + videoFileName;
-                    var result = await Cli.Wrap("ffmpeg.exe")
-                                .WithArguments($"-i {videoFileName} -i {audioFileName} {muxedFileName}")
-                                .ExecuteAsync();
+                    var doc = new XmlDocument();
+                    doc.Load("DASHPlaylist.mpd");
 
-                    if (result.RunTime.TotalSeconds > 0)
-                    {
-                        using (var stream = System.IO.File.OpenRead(muxedFileName))
+                    var curr = doc.GetElementsByTagName("Representation");            
+
+
+                        foreach(XmlNode node in curr)
                         {
-                            await bot.SendVideoAsync(chatId, stream, caption: title, height: videoHeight);
+                            var attrs = node.Attributes;
+                            if(attrs.GetNamedItem("mimeType").InnerText == "video/mp4")
+                            {
+                                if(attrs.GetNamedItem("height").InnerText == callbackQuery.Data)
+                                {
+                                    videoUrl += node.FirstChild.InnerText;
+                                }                    
+                            }
+                        }           
+                        System.Console.WriteLine(videoUrl);
+
+                        bool downloadResultVideo = await Download(videoUrl, videoFileName);            
+
+                        if (downloadResultAudio == true && downloadResultVideo == true)
+                        {
+                            string muxedFileName = "muxed_" + videoFileName;
+                            var result = await Cli.Wrap("path to ffmpeg")
+                                        .WithArguments($"-i {videoFileName} -i {audioFileName} {muxedFileName}")
+                                        .ExecuteAsync();
+
+                            if (result.RunTime.TotalSeconds > 0)
+                            {
+                                using (var stream = System.IO.File.OpenRead(muxedFileName))
+                                {
+                                    await bot.SendVideoAsync(chatId, stream, caption: title);
+                                }
+                                System.IO.File.Delete(videoFileName);
+                                System.IO.File.Delete(audioFileName);
+                                System.IO.File.Delete(muxedFileName);
+                            }
                         }
-                        System.IO.File.Delete(videoFileName);
-                        System.IO.File.Delete(audioFileName);
-                        System.IO.File.Delete(muxedFileName);
-                    }
+                        else if (downloadResultVideo == true)
+                        {
+                            InputOnlineFile inputOnlineFile = new InputOnlineFile(videoUrl);
+                            await bot.SendVideoAsync(chatId, inputOnlineFile, caption: title);
+                            System.IO.File.Delete(videoFileName);
+                        }
+                        else
+                        {
+                            await bot.SendTextMessageAsync(chatId, "Request failed. The link has to be a reddit post with video");
+                        }
+                    
+
                 }
-                else if (downloadResultVideo == true)
-                {
-                    InputOnlineFile inputOnlineFile = new InputOnlineFile(videoUrl);
-                    await bot.SendVideoAsync(chatId, inputOnlineFile, caption: title, height: videoHeight);
-                    System.IO.File.Delete(videoFileName);
-                }
-                else
-                {
-                    await bot.SendTextMessageAsync(chatId, "Request failed. The link has to be a reddit post with video");
-                }
-                //videoResolution = string.Empty;
-                //videoMode = false;
             }
             else if (mode == Mode.AUDIO)
             {
@@ -290,7 +239,6 @@ namespace Reddit_Video_Downloader_Telegram_Bot
                 string audioUrl = json[0]["data"]["children"][0]["data"]["url"].ToString() + "/audio";
                 string title = json[0]["data"]["children"][0]["data"]["title"].ToString();
 
-               // await bot.SendTextMessageAsync(chatId, "Audio is being sent to you");
                 //Uploading file by passing Url
                 InputOnlineFile inputOnlineFile = new InputOnlineFile(audioUrl);
                 await bot.SendAudioAsync(chatId, inputOnlineFile, caption: title);
@@ -323,7 +271,7 @@ namespace Reddit_Video_Downloader_Telegram_Bot
                             await streamToReadFrom.CopyToAsync(DestinationStream);
                         }
                     }
-                    Console.WriteLine("Downloaded");
+                    Console.WriteLine("{0} Downloaded", fileName);
                     return true;
                 }
             }
